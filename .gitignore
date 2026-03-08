@@ -1,0 +1,8 @@
+# Runtime data directories (created at startup, mounted as volumes)
+configs/
+iso/
+xml/
+drivers/
+images/
+__pycache__/
+*.pyc

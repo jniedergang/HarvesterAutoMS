@@ -1,0 +1,2128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Windows Autounattend Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 22px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover { opacity: 0.85; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-primary { background: #667eea; color: white; }
+        .btn-success { background: #48bb78; color: white; }
+        .btn-warning { background: #ecc94b; color: #333; }
+        .btn-danger { background: #fc8181; color: white; }
+        .btn-secondary { background: #e2e8f0; color: #4a5568; }
+
+        select.config-select {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+            cursor: pointer;
+        }
+
+        /* Main layout: 2 columns */
+        .main {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .form-panel {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .preview-panel {
+            flex: 1;
+            min-width: 0;
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Form sections */
+        .section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            border-bottom: 2px solid #667eea;
+            transition: background 0.2s;
+        }
+
+        .section-header:hover {
+            background: #f7fafc;
+        }
+
+        .section-header h2 {
+            color: #333;
+            font-size: 15px;
+        }
+
+        .section-arrow {
+            transition: transform 0.3s;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .section-arrow.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .section-body {
+            padding: 15px 20px;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            overflow: hidden;
+        }
+
+        .section-body.collapsed {
+            max-height: 0;
+            padding: 0 20px;
+        }
+
+        /* Form fields */
+        .field-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .field-grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .field.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .field label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .field input[type="text"],
+        .field input[type="password"],
+        .field select {
+            padding: 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+
+        .field input:focus,
+        .field select:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        .field input.error {
+            border-color: #fc8181;
+        }
+
+        .field .hint {
+            font-size: 11px;
+            color: #a0aec0;
+        }
+
+        .field .error-msg {
+            font-size: 11px;
+            color: #e53e3e;
+        }
+
+        /* Toggle switch */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .toggle-row:last-child {
+            border-bottom: none;
+        }
+
+        .toggle-label {
+            font-size: 14px;
+            color: #333;
+        }
+
+        .toggle-sublabel {
+            font-size: 11px;
+            color: #a0aec0;
+        }
+
+        .toggle {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #cbd5e0;
+            border-radius: 24px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle input:checked + .toggle-slider {
+            background: #667eea;
+        }
+
+        .toggle input:checked + .toggle-slider::before {
+            transform: translateX(20px);
+        }
+
+        /* Radio group */
+        .radio-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .radio-option:has(input:checked) {
+            border-color: #667eea;
+            background: #ebf4ff;
+        }
+
+        .radio-option input[type="radio"] {
+            accent-color: #667eea;
+        }
+
+        /* Checkbox list */
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #333;
+        }
+
+        .checkbox-item input {
+            accent-color: #667eea;
+        }
+
+        /* Dynamic list (users, ports) */
+        .dynamic-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .dynamic-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .dynamic-row input,
+        .dynamic-row select {
+            padding: 6px 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 13px;
+            flex: 1;
+        }
+
+        .dynamic-row input:focus,
+        .dynamic-row select:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        .btn-remove {
+            background: #fed7d7;
+            color: #e53e3e;
+            border: none;
+            border-radius: 6px;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .btn-add {
+            padding: 6px 12px;
+            background: #ebf4ff;
+            color: #667eea;
+            border: 2px dashed #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn-add:hover {
+            background: #dbeafe;
+        }
+
+        /* Preview panel */
+        .preview-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .preview-header {
+            padding: 12px 20px;
+            border-bottom: 2px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .preview-header h2 {
+            color: #333;
+            font-size: 15px;
+        }
+
+        .preview-line-count {
+            font-size: 12px;
+            color: #a0aec0;
+        }
+
+        /* Validation results */
+        .validation-results {
+            display: none;
+            padding: 10px 20px;
+            border-bottom: 1px solid #edf2f7;
+            max-height: 150px;
+            overflow-y: auto;
+            background: #fffbeb;
+        }
+
+        .validation-results.visible {
+            display: block;
+        }
+
+        .validation-results.success {
+            background: #f0fff4;
+        }
+
+        .val-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 4px 0;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .val-item:hover {
+            background: rgba(0,0,0,0.03);
+        }
+
+        .val-icon-error { color: #e53e3e; }
+        .val-icon-warning { color: #d69e2e; }
+        .val-icon-ok { color: #38a169; }
+
+        .preview-body {
+            flex: 1;
+            overflow: auto;
+            min-height: 200px;
+        }
+
+        .xml-preview {
+            padding: 15px 20px;
+            font-family: 'Fira Code', 'Cascadia Code', 'Source Code Pro', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            white-space: pre;
+            color: #333;
+            counter-reset: line;
+        }
+
+        .xml-line {
+            display: block;
+        }
+
+        .xml-line::before {
+            counter-increment: line;
+            content: counter(line);
+            display: inline-block;
+            width: 3em;
+            text-align: right;
+            margin-right: 1em;
+            color: #a0aec0;
+            border-right: 1px solid #e2e8f0;
+            padding-right: 0.5em;
+            user-select: none;
+        }
+
+        .xml-line.highlight {
+            background: #fed7d7;
+        }
+
+        /* XML syntax highlighting */
+        .xml-tag { color: #2b6cb0; }
+        .xml-attr { color: #805ad5; }
+        .xml-val { color: #38a169; }
+        .xml-comment { color: #a0aec0; font-style: italic; }
+
+        /* Console overlay */
+        .console-overlay {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            max-height: 50vh;
+            background: #1a202c;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.4);
+            overflow: hidden;
+        }
+
+        .console-overlay.visible {
+            display: flex;
+        }
+
+        .console-header {
+            padding: 10px 20px;
+            background: #2d3748;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .console-header h2 {
+            color: #e2e8f0;
+            font-size: 14px;
+        }
+
+        .console-header .btn-close-console {
+            background: none;
+            border: none;
+            color: #a0aec0;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        .console-header .btn-close-console:hover {
+            color: #fc8181;
+        }
+
+        .console {
+            background: #1a202c;
+            color: #68d391;
+            font-family: 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 13px;
+            padding: 15px 20px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            flex: 1;
+        }
+
+        .console .error { color: #fc8181; }
+        .console .info { color: #63b3ed; }
+
+        /* Reopen console button */
+        .btn-reopen-console {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 999;
+            padding: 10px 18px;
+            background: #2d3748;
+            color: #68d391;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-reopen-console.visible {
+            display: inline-flex;
+        }
+
+        .btn-reopen-console:hover {
+            background: #4a5568;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .main {
+                flex-direction: column;
+            }
+            .preview-panel {
+                position: static;
+                max-height: none;
+            }
+            .field-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Hidden file input */
+        .hidden-input {
+            display: none;
+        }
+
+        /* Guide floating panel */
+        .guide-panel {
+            display: none;
+            position: fixed;
+            top: 60px;
+            right: 30px;
+            width: 620px;
+            height: 70vh;
+            min-width: 320px;
+            min-height: 200px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+            z-index: 1000;
+            flex-direction: column;
+            overflow: visible;
+        }
+        .guide-resize {
+            position: absolute;
+            z-index: 1001;
+        }
+        .guide-resize-n  { top: -4px; left: 8px; right: 8px; height: 8px; cursor: n-resize; }
+        .guide-resize-s  { bottom: -4px; left: 8px; right: 8px; height: 8px; cursor: s-resize; }
+        .guide-resize-w  { left: -4px; top: 8px; bottom: 8px; width: 8px; cursor: w-resize; }
+        .guide-resize-e  { right: -4px; top: 8px; bottom: 8px; width: 8px; cursor: e-resize; }
+        .guide-resize-nw { top: -4px; left: -4px; width: 12px; height: 12px; cursor: nw-resize; }
+        .guide-resize-ne { top: -4px; right: -4px; width: 12px; height: 12px; cursor: ne-resize; }
+        .guide-resize-sw { bottom: -4px; left: -4px; width: 12px; height: 12px; cursor: sw-resize; }
+        .guide-resize-se { bottom: -4px; right: -4px; width: 12px; height: 12px; cursor: se-resize; }
+        .guide-panel.active {
+            display: flex;
+        }
+        .guide-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: grab;
+            user-select: none;
+            background: #f8fafc;
+            border-radius: 12px 12px 0 0;
+            flex-shrink: 0;
+        }
+        .guide-header:active { cursor: grabbing; }
+        .guide-header h2 {
+            font-size: 15px;
+            color: #333;
+            margin: 0;
+        }
+        .guide-header-actions {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .guide-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #999;
+            padding: 2px 6px;
+            border-radius: 4px;
+            line-height: 1;
+        }
+        .guide-btn:hover { background: #e2e8f0; color: #333; }
+        .guide-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+            font-size: 14px;
+            line-height: 1.7;
+            color: #333;
+        }
+        .guide-body h1 { font-size: 22px; margin: 20px 0 10px; color: #1a202c; }
+        .guide-body h2 { font-size: 18px; margin: 18px 0 8px; color: #2d3748; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+        .guide-body h3 { font-size: 15px; margin: 14px 0 6px; color: #4a5568; }
+        .guide-body h4 { font-size: 14px; margin: 12px 0 4px; color: #4a5568; }
+        .guide-body p { margin: 8px 0; }
+        .guide-body ul, .guide-body ol { margin: 8px 0 8px 24px; }
+        .guide-body li { margin: 4px 0; }
+        .guide-body code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+        .guide-body pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        .guide-body pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+        .guide-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+        .guide-body th, .guide-body td {
+            border: 1px solid #e2e8f0;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .guide-body th { background: #f7fafc; font-weight: 600; }
+        .guide-body strong { color: #1a202c; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Windows Autounattend Generator</h1>
+            <div class="header-actions">
+                <select class="config-select" id="configSelect" onchange="loadConfig(this.value)">
+                    <option value="">-- Saved configs --</option>
+                </select>
+                <button class="btn btn-secondary" onclick="saveConfig()">Save</button>
+                <button class="btn btn-secondary" onclick="deleteSelectedConfig()">Del</button>
+                <button class="btn btn-secondary" onclick="uploadXml()">Load XML</button>
+                <button class="btn btn-warning" onclick="resetToDefaults()">Reset</button>
+                <button class="btn btn-primary" onclick="validateXml()">Validate</button>
+                <button class="btn btn-success" onclick="downloadXml()">Download XML</button>
+                <button class="btn btn-success" id="buildBtn" onclick="buildIso()">Build ISO</button>
+                <button class="btn btn-secondary" onclick="showGuide()">Guide</button>
+                <select class="config-select" id="guideLang" style="width:auto;padding:6px 8px;">
+                    <option value="fr">FR</option>
+                    <option value="en">EN</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="main">
+            <!-- Form panel -->
+            <div class="form-panel">
+
+                <!-- Basic parameters (always open) -->
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection('sec-basic')">
+                        <h2>Basic Parameters</h2>
+                        <span class="section-arrow" id="arrow-sec-basic">&#9660;</span>
+                    </div>
+                    <div class="section-body" id="sec-basic">
+                        <div class="field-grid">
+                            <div class="field">
+                                <label>Hostname (max 15 chars)</label>
+                                <input type="text" id="hostname" maxlength="15" oninput="onInput()">
+                                <span class="error-msg" id="hostname-error"></span>
+                            </div>
+                            <div class="field">
+                                <label>Edition</label>
+                                <select id="edition" onchange="onInput()"></select>
+                            </div>
+                            <div class="field">
+                                <label>Password</label>
+                                <input type="password" id="password" oninput="onInput()">
+                            </div>
+                            <div class="field">
+                                <label>Confirm Password</label>
+                                <input type="password" id="password_confirm" oninput="checkPasswordMatch()">
+                                <span class="error-msg" id="password-error"></span>
+                            </div>
+                            <div class="field">
+                                <label>IP Address</label>
+                                <input type="text" id="ip" oninput="onInput()">
+                            </div>
+                            <div class="field">
+                                <label>Subnet Mask</label>
+                                <input type="text" id="subnet" oninput="onInput()">
+                            </div>
+                            <div class="field">
+                                <label>Gateway</label>
+                                <input type="text" id="gateway" oninput="onInput()">
+                            </div>
+                            <div class="field">
+                                <label>DNS Server</label>
+                                <input type="text" id="dns" oninput="onInput()">
+                            </div>
+                            <div class="field">
+                                <label>Timezone</label>
+                                <select id="timezone" onchange="onInput()"></select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Installation Source -->
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection('sec-install-source')">
+                        <h2>Installation Source</h2>
+                        <span class="section-arrow collapsed" id="arrow-sec-install-source">&#9660;</span>
+                    </div>
+                    <div class="section-body collapsed" id="sec-install-source">
+                        <p style="font-size:12px;color:#a0aec0;margin-bottom:12px;">
+                            Choose where the Windows installation ISO comes from. This is informational — it does not affect the autounattend XML but is saved in the config for reference during Terraform provisioning.
+                        </p>
+                        <div class="radio-group" style="margin-bottom:12px;">
+                            <label class="radio-option">
+                                <input type="radio" name="install_source_type" value="local" onchange="onInstallSourceChange()">
+                                Local ISO (HTTP)
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="install_source_type" value="harvester" onchange="onInstallSourceChange()">
+                                Harvester Image
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="install_source_type" value="url" onchange="onInstallSourceChange()">
+                                External URL
+                            </label>
+                        </div>
+                        <div id="install-source-local" style="display:none;">
+                            <div class="field">
+                                <label>Windows ISO</label>
+                                <select id="install_source_local_iso" onchange="updateLocalIsoUrl();onInput()" style="margin-bottom:6px;">
+                                    <option value="">-- No ISOs found --</option>
+                                </select>
+                                <div style="display:flex;gap:6px;align-items:center;">
+                                    <input type="text" id="install_source_local_url" readonly style="flex:1;padding:6px 10px;border:2px solid #e2e8f0;border-radius:6px;font-size:12px;background:#f7fafc;color:#4a5568;">
+                                    <button class="btn btn-secondary" onclick="copyInstallUrl()" style="padding:6px 10px;font-size:12px;">Copy</button>
+                                </div>
+                                <span class="hint">Place Windows ISOs in the images/ directory. They will be served over HTTP.</span>
+                            </div>
+                        </div>
+                        <div id="install-source-harvester" style="display:none;">
+                            <div class="field">
+                                <label>Harvester Image Name</label>
+                                <input type="text" id="install_source_harvester_name" placeholder="e.g. image-xxxxx or windows-server-2025" oninput="onInput()">
+                            </div>
+                        </div>
+                        <div id="install-source-url" style="display:none;">
+                            <div class="field">
+                                <label>External URL</label>
+                                <input type="text" id="install_source_external_url" placeholder="https://example.com/windows-server-2025.iso" oninput="onInput()">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Drivers -->
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection('sec-drivers')">
+                        <h2>Drivers</h2>
+                        <span class="section-arrow collapsed" id="arrow-sec-drivers">&#9660;</span>
+                    </div>
+                    <div class="section-body collapsed" id="sec-drivers">
+                        <p style="font-size:12px;color:#a0aec0;margin-bottom:12px;">
+                            Select which driver sources to include in the autounattend ISO. Drivers are copied into <code>$WinPEDriver$</code> and auto-loaded by Windows PE.
+                        </p>
+                        <div id="driver-sources-list" style="margin-bottom:12px;"></div>
+                        <div style="border-top:1px solid #edf2f7;padding-top:12px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                                <strong style="font-size:13px;color:#4a5568;">Custom Drivers</strong>
+                                <label class="btn-add" style="margin:0;cursor:pointer;">
+                                    Upload drivers
+                                    <input type="file" multiple accept=".inf,.sys,.cat,.dll" onchange="uploadDrivers(event)" style="display:none;">
+                                </label>
+                            </div>
+                            <div id="custom-drivers-list" style="font-size:13px;color:#4a5568;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Network & Access -->
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection('sec-network')">
+                        <h2>Network &amp; Access</h2>
+                        <span class="section-arrow" id="arrow-sec-network">&#9660;</span>
+                    </div>
+                    <div class="section-body" id="sec-network">
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">RDP (Remote Desktop)</div>
+                                <div class="toggle-sublabel">Enable Remote Desktop Protocol connections</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="rdp_enabled" onchange="onInput()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-row" id="nla-row">
+                            <div>
+                                <div class="toggle-label">NLA (Network Level Authentication)</div>
+                                <div class="toggle-sublabel">Require NLA for RDP connections (more secure)</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="nla_enabled" onchange="onInput()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">SSH (OpenSSH Server)</div>
+                                <div class="toggle-sublabel">Install and start OpenSSH Server</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="ssh_enabled" onchange="onInput()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-row" id="ssh-shell-row">
+                            <div>
+                                <div class="toggle-label">SSH Default Shell</div>
+                            </div>
+                            <select id="ssh_default_shell" onchange="onInput()" style="padding:6px 10px;border:2px solid #e2e8f0;border-radius:6px;font-size:13px;">
+                                <option value="powershell">PowerShell</option>
+                                <option value="cmd">cmd.exe</option>
+                            </select>
+                        </div>
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">WinRM</div>
+                                <div class="toggle-sublabel">Enable Windows Remote Management</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="winrm_enabled" onchange="onInput()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="toggle-row">
+                            <div>
+                                <div class="toggle-label">ICMP Ping</div>
+                                <div class="toggle-sublabel">Allow inbound ICMP echo requests</div>
+                            </div>
+                            <label class="toggle">
+                                <input type="checkbox" id="icmp_enabled" onchange="onInput()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Disk & Partitioning -->
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection('sec-disk')">
+                        <h2>Disk &amp; Partitioning</h2>
+                        <span class="section-arrow collapsed" id="arrow-sec-disk">&#9660;</span>
+                    </div>
+                    <div class="section-body collapsed" id="sec-disk">
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="partition_scheme" value="mbr" onchange="onInput()">
+                                MBR (BIOS)
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="partition_scheme" value="gpt" onchange="onInput()">
+                                GPT (UEFI)
+                            </label>
+                        </div>
+                        <p style="font-size:12px;color:#a0aec0;margin-top:10px;">
+                            MBR: 2 partitions (System 500MB + Windows).<br>
+                            GPT: 3 partitions (EFI 260MB + MSR 128MB + Windows).
+                        </p>
+                    </div>
+                </div>
+
+                <!-- OOBE & Locale -->
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection('sec-oobe')">
+                        <h2>OOBE &amp; Locale</h2>
+                        <span class="section-arrow collapsed" id="arrow-sec-oobe">&#9660;</span>
+                    </div>
+                    <div class="section-body collapsed" id="sec-oobe">
+                        <div class="field-grid">
+                            <div class="field">
+                                <label>UI Language</label>
+                                <select id="ui_language" onchange="onInput()"></select>
+                            </div>
+                            <div class="field">
+                                <label>Input Locale (Keyboard)</label>
+                                <select id="input_locale" onchange="onInput()"></select>
+                            </div>
+                            <div class="field">
+                                <label>Network Location</label>
+                                <select id="network_location" onchange="onInput()">
+                                    <option value="Home">Home</option>
+                                    <option value="Work">Work</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label>ProtectYourPC</label>
+                                <select id="protect_your_pc" onchange="onInput()">
+                                    <option value="1">1 - Recommended settings</option>
+                                    <option value="2">2 - Updates only</option>
+                                    <option value="3">3 - Disabled</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label>Product Key (optional)</label>
+                                <input type="text" id="product_key" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" oninput="onInput()">
+                            </div>
+                            <div class="field">
+                                <label>Organization</label>
+                                <input type="text" id="organization" oninput="onInput()">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Firewall -->
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection('sec-firewall')">
+                        <h2>Custom Firewall Ports</h2>
+                        <span class="section-arrow collapsed" id="arrow-sec-firewall">&#9660;</span>
+                    </div>
+                    <div class="section-body collapsed" id="sec-firewall">
+                        <p style="font-size:12px;color:#a0aec0;margin-bottom:10px;">
+                            Ports for SSH (22), RDP (3389), WinRM (5985/5986), and ICMP are auto-managed by the toggles above.
+                            Add extra ports below.
+                        </p>
+                        <div class="dynamic-list" id="firewall-ports-list"></div>
+                        <button class="btn-add" onclick="addCustomPort()" style="margin-top:8px;">+ Add port</button>
+                    </div>
+                </div>
+
+                <!-- Windows Features -->
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection('sec-features')">
+                        <h2>Windows Features</h2>
+                        <span class="section-arrow collapsed" id="arrow-sec-features">&#9660;</span>
+                    </div>
+                    <div class="section-body collapsed" id="sec-features">
+                        <div class="checkbox-grid" id="features-grid"></div>
+                    </div>
+                </div>
+
+                <!-- Additional Users -->
+                <div class="section">
+                    <div class="section-header" onclick="toggleSection('sec-users')">
+                        <h2>Additional Users</h2>
+                        <span class="section-arrow collapsed" id="arrow-sec-users">&#9660;</span>
+                    </div>
+                    <div class="section-body collapsed" id="sec-users">
+                        <div class="dynamic-list" id="users-list"></div>
+                        <button class="btn-add" onclick="addUser()" style="margin-top:8px;" id="add-user-btn">+ Add user</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview panel -->
+            <div class="preview-panel">
+                <div class="preview-card">
+                    <div class="preview-header">
+                        <h2>XML Preview</h2>
+                        <span class="preview-line-count" id="line-count"></span>
+                    </div>
+                    <div class="validation-results" id="validation-results"></div>
+                    <div class="preview-body">
+                        <div class="xml-preview" id="xml-preview">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Console overlay -->
+    <div class="console-overlay" id="console-overlay">
+        <div class="console-header">
+            <h2>Build Console</h2>
+            <button class="btn-close-console" onclick="hideConsole()" title="Close">&times;</button>
+        </div>
+        <div class="console" id="console"></div>
+    </div>
+
+    <!-- Reopen console button -->
+    <button class="btn-reopen-console" id="btn-reopen" onclick="showConsole()">Show Console</button>
+
+    <input type="file" id="fileInput" accept=".xml" class="hidden-input" onchange="handleFileUpload(event)">
+
+    <script>
+    // ──────────────────────────────────────────
+    // State
+    // ──────────────────────────────────────────
+    let defaults = {};
+    let metadata = {};
+    let previewTimer = null;
+    let currentXml = '';
+    let highlightLines = new Set();
+
+    // ──────────────────────────────────────────
+    // Init
+    // ──────────────────────────────────────────
+    async function init() {
+        try {
+            const resp = await fetch('/api/defaults');
+            const data = await resp.json();
+            defaults = data.defaults;
+            metadata = data;
+
+            populateSelect('edition', data.editions.map(e => ({value: e, label: e})));
+            populateSelect('timezone', data.timezones);
+            populateSelect('ui_language', data.locales);
+            populateSelect('input_locale', data.locales);
+
+            buildFeaturesGrid(data.features);
+            buildDriverSources(data.driver_sources || []);
+            fillForm(defaults);
+            await loadConfigList();
+            await loadImages();
+            updatePreview();
+        } catch (e) {
+            document.getElementById('xml-preview').textContent = 'Error loading defaults: ' + e.message;
+        }
+    }
+
+    function populateSelect(id, options) {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        options.forEach(opt => {
+            const o = document.createElement('option');
+            if (typeof opt === 'string') {
+                o.value = opt;
+                o.textContent = opt;
+            } else {
+                o.value = opt.value;
+                o.textContent = opt.label;
+            }
+            sel.appendChild(o);
+        });
+    }
+
+    function buildFeaturesGrid(features) {
+        const grid = document.getElementById('features-grid');
+        grid.innerHTML = '';
+        features.forEach(f => {
+            const label = document.createElement('label');
+            label.className = 'checkbox-item';
+            label.innerHTML = `<input type="checkbox" value="${escapeHtml(f.value)}" onchange="onInput()"> ${escapeHtml(f.label)}`;
+            grid.appendChild(label);
+        });
+    }
+
+    // ──────────────────────────────────────────
+    // Form data
+    // ──────────────────────────────────────────
+    function fillForm(cfg) {
+        document.getElementById('hostname').value = cfg.hostname || '';
+        document.getElementById('password').value = cfg.password || '';
+        document.getElementById('password_confirm').value = cfg.password || '';
+        document.getElementById('ip').value = cfg.ip || '';
+        document.getElementById('subnet').value = cfg.subnet || '';
+        document.getElementById('gateway').value = cfg.gateway || '';
+        document.getElementById('dns').value = cfg.dns || '';
+        document.getElementById('edition').value = cfg.edition || '';
+        document.getElementById('timezone').value = cfg.timezone || '';
+        document.getElementById('rdp_enabled').checked = cfg.rdp_enabled !== false;
+        document.getElementById('nla_enabled').checked = cfg.nla_enabled !== false;
+        document.getElementById('ssh_enabled').checked = cfg.ssh_enabled !== false;
+        document.getElementById('ssh_default_shell').value = cfg.ssh_default_shell || 'powershell';
+        document.getElementById('winrm_enabled').checked = cfg.winrm_enabled !== false;
+        document.getElementById('icmp_enabled').checked = cfg.icmp_enabled === true;
+        document.getElementById('ui_language').value = cfg.ui_language || 'en-US';
+        document.getElementById('input_locale').value = cfg.input_locale || 'en-US';
+        document.getElementById('network_location').value = cfg.network_location || 'Work';
+        document.getElementById('protect_your_pc').value = String(cfg.protect_your_pc || 3);
+        document.getElementById('product_key').value = cfg.product_key || '';
+        document.getElementById('organization').value = cfg.organization || 'Homelab';
+
+        // Partition scheme
+        const scheme = cfg.partition_scheme || 'mbr';
+        document.querySelectorAll('input[name="partition_scheme"]').forEach(r => {
+            r.checked = r.value === scheme;
+        });
+
+        // Features
+        const feats = cfg.features || [];
+        document.querySelectorAll('#features-grid input[type="checkbox"]').forEach(cb => {
+            cb.checked = feats.includes(cb.value);
+        });
+
+        // Firewall ports
+        const portsDiv = document.getElementById('firewall-ports-list');
+        portsDiv.innerHTML = '';
+        (cfg.firewall_ports || []).forEach(p => addCustomPort(p.port, p.protocol));
+
+        // Users
+        const usersDiv = document.getElementById('users-list');
+        usersDiv.innerHTML = '';
+        (cfg.additional_users || []).forEach(u => addUser(u.name, u.password, u.group));
+
+        // Driver sources
+        const driverSources = cfg.driver_sources || [];
+        document.querySelectorAll('#driver-sources-list input[type="checkbox"]').forEach(cb => {
+            cb.checked = driverSources.length === 0 || driverSources.includes(cb.value);
+        });
+
+        // Install source
+        const installSource = cfg.install_source || {};
+        const srcType = installSource.type || '';
+        document.querySelectorAll('input[name="install_source_type"]').forEach(r => {
+            r.checked = r.value === srcType;
+        });
+        document.getElementById('install_source_harvester_name').value = srcType === 'harvester' ? (installSource.value || '') : '';
+        document.getElementById('install_source_external_url').value = srcType === 'url' ? (installSource.value || '') : '';
+        onInstallSourceChange();
+
+        updateVisibility();
+    }
+
+    function collectFormData() {
+        const features = [];
+        document.querySelectorAll('#features-grid input:checked').forEach(cb => {
+            features.push(cb.value);
+        });
+
+        const firewall_ports = [];
+        document.querySelectorAll('#firewall-ports-list .dynamic-row').forEach(row => {
+            const port = row.querySelector('.port-input').value.trim();
+            const proto = row.querySelector('.proto-select').value;
+            if (port) firewall_ports.push({port: parseInt(port) || port, protocol: proto});
+        });
+
+        const additional_users = [];
+        document.querySelectorAll('#users-list .dynamic-row').forEach(row => {
+            const name = row.querySelector('.user-name').value.trim();
+            const pwd = row.querySelector('.user-pwd').value;
+            const grp = row.querySelector('.user-group').value;
+            if (name) additional_users.push({name, password: pwd, group: grp});
+        });
+
+        const scheme = document.querySelector('input[name="partition_scheme"]:checked');
+
+        // Driver sources
+        const driver_sources = [];
+        document.querySelectorAll('#driver-sources-list input[type="checkbox"]:checked').forEach(cb => {
+            driver_sources.push(cb.value);
+        });
+
+        // Install source
+        const srcTypeEl = document.querySelector('input[name="install_source_type"]:checked');
+        let install_source = {};
+        if (srcTypeEl) {
+            const t = srcTypeEl.value;
+            let v = '';
+            if (t === 'local') v = document.getElementById('install_source_local_iso').value;
+            else if (t === 'harvester') v = document.getElementById('install_source_harvester_name').value.trim();
+            else if (t === 'url') v = document.getElementById('install_source_external_url').value.trim();
+            install_source = {type: t, value: v};
+        }
+
+        return {
+            hostname: document.getElementById('hostname').value.trim(),
+            password: document.getElementById('password').value,
+            ip: document.getElementById('ip').value.trim(),
+            subnet: document.getElementById('subnet').value.trim(),
+            gateway: document.getElementById('gateway').value.trim(),
+            dns: document.getElementById('dns').value.trim(),
+            timezone: document.getElementById('timezone').value,
+            edition: document.getElementById('edition').value,
+            partition_scheme: scheme ? scheme.value : 'mbr',
+            ui_language: document.getElementById('ui_language').value,
+            input_locale: document.getElementById('input_locale').value,
+            rdp_enabled: document.getElementById('rdp_enabled').checked,
+            nla_enabled: document.getElementById('nla_enabled').checked,
+            ssh_enabled: document.getElementById('ssh_enabled').checked,
+            ssh_default_shell: document.getElementById('ssh_default_shell').value,
+            winrm_enabled: document.getElementById('winrm_enabled').checked,
+            icmp_enabled: document.getElementById('icmp_enabled').checked,
+            firewall_ports,
+            features,
+            additional_users,
+            organization: document.getElementById('organization').value.trim(),
+            product_key: document.getElementById('product_key').value.trim(),
+            network_location: document.getElementById('network_location').value,
+            protect_your_pc: parseInt(document.getElementById('protect_your_pc').value) || 3,
+            driver_sources,
+            install_source,
+            client_timestamp: getClientTimestamp(),
+        };
+    }
+
+    // ──────────────────────────────────────────
+    // UI Helpers
+    // ──────────────────────────────────────────
+    function toggleSection(id) {
+        const body = document.getElementById(id);
+        const arrow = document.getElementById('arrow-' + id);
+        body.classList.toggle('collapsed');
+        arrow.classList.toggle('collapsed');
+    }
+
+    function updateVisibility() {
+        const rdp = document.getElementById('rdp_enabled').checked;
+        document.getElementById('nla-row').style.display = rdp ? 'flex' : 'none';
+
+        const ssh = document.getElementById('ssh_enabled').checked;
+        document.getElementById('ssh-shell-row').style.display = ssh ? 'flex' : 'none';
+    }
+
+    function onInput() {
+        updateVisibility();
+        validateHostname();
+        schedulePreview();
+    }
+
+    function validateHostname() {
+        const el = document.getElementById('hostname');
+        const err = document.getElementById('hostname-error');
+        const v = el.value;
+        if (v && !/^[a-zA-Z0-9-]*$/.test(v)) {
+            el.classList.add('error');
+            err.textContent = 'Only letters, digits, and hyphens allowed';
+        } else if (v.length > 15) {
+            el.classList.add('error');
+            err.textContent = 'Max 15 characters';
+        } else {
+            el.classList.remove('error');
+            err.textContent = '';
+        }
+    }
+
+    function checkPasswordMatch() {
+        const p1 = document.getElementById('password').value;
+        const p2 = document.getElementById('password_confirm').value;
+        const err = document.getElementById('password-error');
+        if (p2 && p1 !== p2) {
+            err.textContent = 'Passwords do not match';
+        } else {
+            err.textContent = '';
+        }
+    }
+
+    // Dynamic ports
+    function addCustomPort(port, proto) {
+        const list = document.getElementById('firewall-ports-list');
+        const row = document.createElement('div');
+        row.className = 'dynamic-row';
+        row.innerHTML = `
+            <input type="text" class="port-input" placeholder="Port (e.g. 8080)" value="${escapeHtml(String(port||''))}" oninput="onInput()">
+            <select class="proto-select" onchange="onInput()">
+                <option value="TCP" ${(proto||'TCP')==='TCP'?'selected':''}>TCP</option>
+                <option value="UDP" ${proto==='UDP'?'selected':''}>UDP</option>
+            </select>
+            <button class="btn-remove" onclick="this.parentElement.remove();onInput();">&times;</button>
+        `;
+        list.appendChild(row);
+    }
+
+    // Dynamic users
+    function addUser(name, pwd, group) {
+        const list = document.getElementById('users-list');
+        if (list.querySelectorAll('.dynamic-row').length >= 5) return;
+        const row = document.createElement('div');
+        row.className = 'dynamic-row';
+        row.innerHTML = `
+            <input type="text" class="user-name" placeholder="Username" value="${escapeHtml(name||'')}" oninput="onInput()">
+            <input type="password" class="user-pwd" placeholder="Password" value="${escapeHtml(pwd||'')}" oninput="onInput()">
+            <select class="user-group" onchange="onInput()">
+                <option value="Administrators" ${(group||'Users')==='Administrators'?'selected':''}>Admins</option>
+                <option value="Users" ${(group||'Users')==='Users'?'selected':''}>Users</option>
+            </select>
+            <button class="btn-remove" onclick="this.parentElement.remove();onInput();">&times;</button>
+        `;
+        list.appendChild(row);
+        // Hide button at max
+        document.getElementById('add-user-btn').style.display =
+            list.querySelectorAll('.dynamic-row').length >= 5 ? 'none' : '';
+    }
+
+    // ──────────────────────────────────────────
+    // Preview
+    // ──────────────────────────────────────────
+    function schedulePreview() {
+        if (previewTimer) clearTimeout(previewTimer);
+        previewTimer = setTimeout(updatePreview, 300);
+    }
+
+    async function updatePreview() {
+        const data = collectFormData();
+        try {
+            const resp = await fetch('/api/generate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data),
+            });
+            const result = await resp.json();
+            if (result.xml) {
+                currentXml = result.xml;
+                renderXml(result.xml);
+            } else if (result.errors) {
+                document.getElementById('xml-preview').textContent = 'Validation errors:\n' + result.errors.join('\n');
+            }
+        } catch (e) {
+            document.getElementById('xml-preview').textContent = 'Error: ' + e.message;
+        }
+    }
+
+    function renderXml(xml) {
+        const pre = document.getElementById('xml-preview');
+        const lines = xml.split('\n');
+        document.getElementById('line-count').textContent = lines.length + ' lines';
+
+        const highlighted = lines.map((line, i) => {
+            const lineNum = i + 1;
+            const cls = highlightLines.has(lineNum) ? ' highlight' : '';
+            return `<span class="xml-line${cls}" data-line="${lineNum}">${syntaxHighlight(escapeHtml(line))}</span>`;
+        });
+        pre.innerHTML = highlighted.join('\n');
+    }
+
+    function syntaxHighlight(line) {
+        // Comments
+        line = line.replace(/(&lt;!--.*?--&gt;)/g, '<span class="xml-comment">$1</span>');
+        // Tags
+        line = line.replace(/(&lt;\/?[\w:-]+)/g, '<span class="xml-tag">$1</span>');
+        line = line.replace(/(\/?\s*&gt;)/g, '<span class="xml-tag">$1</span>');
+        // Attributes
+        line = line.replace(/\b([\w:-]+)=/g, '<span class="xml-attr">$1</span>=');
+        // Attribute values
+        line = line.replace(/=&quot;([^&]*?)&quot;/g, '=<span class="xml-val">&quot;$1&quot;</span>');
+        return line;
+    }
+
+    // ──────────────────────────────────────────
+    // Actions
+    // ──────────────────────────────────────────
+    async function downloadXml() {
+        const data = collectFormData();
+        try {
+            const resp = await fetch('/api/download', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data),
+            });
+            if (!resp.ok) {
+                const err = await resp.json();
+                alert('Error: ' + (err.errors || [err.error]).join('\n'));
+                return;
+            }
+            const result = await resp.json();
+            const blob = new Blob([result.xml], {type: 'application/xml'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = result.filename || 'autounattend.xml';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('XML saved as ' + result.filename);
+        } catch (e) {
+            alert('Download error: ' + e.message);
+        }
+    }
+
+    async function buildIso() {
+        const data = collectFormData();
+        const btn = document.getElementById('buildBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> Building...';
+
+        const overlay = document.getElementById('console-overlay');
+        const consoleEl = document.getElementById('console');
+        overlay.classList.add('visible');
+        document.getElementById('btn-reopen').classList.remove('visible');
+        consoleEl.textContent = '';
+
+        try {
+            const resp = await fetch('/api/build-iso', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data),
+            });
+
+            if (!resp.ok) {
+                const err = await resp.json();
+                consoleEl.innerHTML = '<span class="error">Error: ' + escapeHtml((err.errors || [err.error]).join('\n')) + '</span>';
+                btn.disabled = false;
+                btn.textContent = 'Build ISO';
+                return;
+            }
+
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const {done, value} = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, {stream: true});
+
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const text = line.substring(6);
+                        if (text.startsWith('__XML_FILE__:')) {
+                            const xmlFile = text.substring('__XML_FILE__:'.length);
+                            consoleEl.innerHTML += '<a href="/api/download-xml/' + encodeURIComponent(xmlFile) + '" style="color:#63b3ed;text-decoration:underline;font-size:13px;">XML: ' + escapeHtml(xmlFile) + '</a>\n';
+                        } else if (text.startsWith('__ISO_FILE__:')) {
+                            const isoFile = text.substring('__ISO_FILE__:'.length);
+                            consoleEl.innerHTML += '<span class="info">\n=== BUILD COMPLETE ===\n</span>';
+                            consoleEl.innerHTML += '<a href="/api/download-iso/' + encodeURIComponent(isoFile) + '" style="color:#68d391;font-weight:bold;text-decoration:underline;font-size:14px;">Download ' + escapeHtml(isoFile) + '</a>\n';
+                        } else if (text === '__DONE_OK__') {
+                            // already handled by __ISO_FILE__
+                        } else if (text === '__DONE_FAIL__') {
+                            consoleEl.innerHTML += '<span class="error">\n=== BUILD FAILED ===</span>\n';
+                        } else {
+                            consoleEl.textContent += text + '\n';
+                        }
+                        consoleEl.scrollTop = consoleEl.scrollHeight;
+                    }
+                }
+            }
+        } catch (e) {
+            consoleEl.innerHTML += '<span class="error">Connection error: ' + escapeHtml(e.message) + '</span>\n';
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'Build ISO';
+    }
+
+    async function validateXml() {
+        const resultsEl = document.getElementById('validation-results');
+        highlightLines = new Set();
+
+        try {
+            const resp = await fetch('/api/validate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({xml: currentXml}),
+            });
+            const data = await resp.json();
+            const errors = data.errors || [];
+
+            resultsEl.classList.add('visible');
+
+            if (errors.length === 0) {
+                resultsEl.className = 'validation-results visible success';
+                resultsEl.innerHTML = '<div class="val-item"><span class="val-icon-ok">&#10004;</span> XML is valid</div>';
+            } else {
+                resultsEl.className = 'validation-results visible';
+                resultsEl.innerHTML = errors.map(e => {
+                    const icon = e.severity === 'error' ? 'val-icon-error' : 'val-icon-warning';
+                    const sym = e.severity === 'error' ? '&#10008;' : '&#9888;';
+                    if (e.line > 0) highlightLines.add(e.line);
+                    const lineRef = e.line > 0 ? `Line ${e.line}: ` : '';
+                    return `<div class="val-item" onclick="scrollToLine(${e.line})"><span class="${icon}">${sym}</span> ${lineRef}${escapeHtml(e.message)}</div>`;
+                }).join('');
+            }
+
+            renderXml(currentXml);
+        } catch (e) {
+            resultsEl.classList.add('visible');
+            resultsEl.innerHTML = '<div class="val-item"><span class="val-icon-error">&#10008;</span> Validation error: ' + escapeHtml(e.message) + '</div>';
+        }
+    }
+
+    function scrollToLine(line) {
+        if (line <= 0) return;
+        const el = document.querySelector(`.xml-line[data-line="${line}"]`);
+        if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+    }
+
+    function resetToDefaults() {
+        fillForm(defaults);
+        document.getElementById('validation-results').classList.remove('visible');
+        highlightLines = new Set();
+        updatePreview();
+    }
+
+    // ──────────────────────────────────────────
+    // Upload XML
+    // ──────────────────────────────────────────
+    function uploadXml() {
+        document.getElementById('fileInput').click();
+    }
+
+    async function handleFileUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        event.target.value = '';
+
+        const text = await file.text();
+        try {
+            const resp = await fetch('/api/parse', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({xml: text}),
+            });
+            const data = await resp.json();
+            if (data.config) {
+                fillForm(data.config);
+                updatePreview();
+            }
+        } catch (e) {
+            alert('Parse error: ' + e.message);
+        }
+    }
+
+    // ──────────────────────────────────────────
+    // Config management
+    // ──────────────────────────────────────────
+    async function loadConfigList() {
+        try {
+            const resp = await fetch('/api/configs');
+            const data = await resp.json();
+            const sel = document.getElementById('configSelect');
+            sel.innerHTML = '<option value="">-- Saved configs --</option>';
+            (data.configs || []).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.slug;
+                opt.textContent = c.name;
+                sel.appendChild(opt);
+            });
+        } catch (e) {}
+    }
+
+    async function loadConfig(slug) {
+        if (!slug) return;
+        try {
+            const resp = await fetch('/api/configs/' + encodeURIComponent(slug));
+            const data = await resp.json();
+            if (data.config) {
+                fillForm(data.config);
+                updatePreview();
+            }
+        } catch (e) {
+            alert('Load error: ' + e.message);
+        }
+    }
+
+    async function saveConfig() {
+        const name = prompt('Configuration name:');
+        if (!name) return;
+        const config = collectFormData();
+        try {
+            await fetch('/api/configs', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({name, config}),
+            });
+            await loadConfigList();
+        } catch (e) {
+            alert('Save error: ' + e.message);
+        }
+    }
+
+    async function deleteSelectedConfig() {
+        const sel = document.getElementById('configSelect');
+        const slug = sel.value;
+        if (!slug) { alert('Select a config first'); return; }
+        if (!confirm('Delete this config?')) return;
+        try {
+            await fetch('/api/configs/' + encodeURIComponent(slug), {method: 'DELETE'});
+            await loadConfigList();
+        } catch (e) {
+            alert('Delete error: ' + e.message);
+        }
+    }
+
+    function hideConsole() {
+        document.getElementById('console-overlay').classList.remove('visible');
+        document.getElementById('btn-reopen').classList.add('visible');
+    }
+
+    function showConsole() {
+        document.getElementById('console-overlay').classList.add('visible');
+        document.getElementById('btn-reopen').classList.remove('visible');
+        const consoleEl = document.getElementById('console');
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    // ──────────────────────────────────────────
+    // Drivers
+    // ──────────────────────────────────────────
+    function buildDriverSources(sources) {
+        const container = document.getElementById('driver-sources-list');
+        container.innerHTML = '';
+        if (!sources.length) {
+            container.innerHTML = '<p style="font-size:13px;color:#a0aec0;">No driver sources found.</p>';
+            return;
+        }
+        sources.forEach(src => {
+            const sizeKb = Math.round(src.total_size / 1024);
+            const row = document.createElement('div');
+            row.className = 'toggle-row';
+            row.innerHTML = `
+                <div>
+                    <div class="toggle-label">${escapeHtml(src.name)}</div>
+                    <div class="toggle-sublabel">${src.inf_count} .inf files, ${src.file_count} files total (${sizeKb} KB)</div>
+                </div>
+                <label class="toggle">
+                    <input type="checkbox" value="${escapeHtml(src.name)}" checked onchange="onInput()">
+                    <span class="toggle-slider"></span>
+                </label>
+            `;
+            container.appendChild(row);
+        });
+    }
+
+    async function refreshDriverSources() {
+        try {
+            const resp = await fetch('/api/drivers');
+            const data = await resp.json();
+            buildDriverSources(data.sources || []);
+        } catch (e) {}
+    }
+
+    async function uploadDrivers(event) {
+        const files = event.target.files;
+        if (!files.length) return;
+        const formData = new FormData();
+        for (const f of files) formData.append('files', f);
+        try {
+            const resp = await fetch('/api/drivers/upload', {method: 'POST', body: formData});
+            const data = await resp.json();
+            if (data.uploaded) {
+                showToast('Uploaded: ' + data.uploaded.join(', '));
+                await refreshDriverSources();
+                await loadCustomDrivers();
+            } else {
+                alert(data.error || 'Upload failed');
+            }
+        } catch (e) {
+            alert('Upload error: ' + e.message);
+        }
+        event.target.value = '';
+    }
+
+    async function loadCustomDrivers() {
+        try {
+            const resp = await fetch('/api/drivers/custom');
+            const data = await resp.json();
+            const container = document.getElementById('custom-drivers-list');
+            if (!data.files || !data.files.length) {
+                container.innerHTML = '<span style="color:#a0aec0;font-size:12px;">No custom drivers uploaded.</span>';
+                return;
+            }
+            container.innerHTML = data.files.map(f =>
+                `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #edf2f7;">
+                    <span>${escapeHtml(f.name)} <span style="color:#a0aec0;">(${Math.round(f.size/1024)} KB)</span></span>
+                    <button class="btn-remove" onclick="deleteCustomDriver('${escapeHtml(f.name)}')" style="width:24px;height:24px;font-size:14px;">&times;</button>
+                </div>`
+            ).join('');
+        } catch (e) {}
+    }
+
+    async function deleteCustomDriver(name) {
+        try {
+            await fetch('/api/drivers/custom/' + encodeURIComponent(name), {method: 'DELETE'});
+            await refreshDriverSources();
+            await loadCustomDrivers();
+        } catch (e) {
+            alert('Delete error: ' + e.message);
+        }
+    }
+
+    // ──────────────────────────────────────────
+    // Installation Source / Images
+    // ──────────────────────────────────────────
+    function onInstallSourceChange() {
+        const sel = document.querySelector('input[name="install_source_type"]:checked');
+        const t = sel ? sel.value : '';
+        document.getElementById('install-source-local').style.display = t === 'local' ? 'block' : 'none';
+        document.getElementById('install-source-harvester').style.display = t === 'harvester' ? 'block' : 'none';
+        document.getElementById('install-source-url').style.display = t === 'url' ? 'block' : 'none';
+        if (t === 'local') updateLocalIsoUrl();
+        onInput();
+    }
+
+    async function loadImages() {
+        try {
+            const resp = await fetch('/api/images');
+            const data = await resp.json();
+            const sel = document.getElementById('install_source_local_iso');
+            sel.innerHTML = '';
+            if (!data.images || !data.images.length) {
+                sel.innerHTML = '<option value="">-- No ISOs in images/ --</option>';
+                return;
+            }
+            data.images.forEach(img => {
+                const opt = document.createElement('option');
+                opt.value = img.name;
+                opt.textContent = `${img.name} (${img.size_gb} GB)`;
+                sel.appendChild(opt);
+            });
+            updateLocalIsoUrl();
+        } catch (e) {}
+    }
+
+    function updateLocalIsoUrl() {
+        const sel = document.getElementById('install_source_local_iso');
+        const urlField = document.getElementById('install_source_local_url');
+        if (sel.value) {
+            urlField.value = window.location.origin + '/images/' + encodeURIComponent(sel.value);
+        } else {
+            urlField.value = '';
+        }
+    }
+
+    function copyInstallUrl() {
+        const url = document.getElementById('install_source_local_url').value;
+        if (!url) return;
+        navigator.clipboard.writeText(url).then(() => showToast('URL copied'));
+    }
+
+    // ──────────────────────────────────────────
+    // Toast notification
+    // ──────────────────────────────────────────
+    function showToast(msg) {
+        const toast = document.createElement('div');
+        toast.textContent = msg;
+        toast.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#2d3748;color:#e2e8f0;padding:10px 20px;border-radius:8px;font-size:13px;z-index:2000;box-shadow:0 4px 15px rgba(0,0,0,0.3);transition:opacity 0.3s;';
+        document.body.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    // ──────────────────────────────────────────
+    // Utilities
+    // ──────────────────────────────────────────
+    function getClientTimestamp() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const h = String(now.getHours()).padStart(2, '0');
+        const min = String(now.getMinutes()).padStart(2, '0');
+        return `${y}-${m}-${d}_${h}h${min}`;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Start
+    init();
+    loadCustomDrivers();
+    </script>
+
+    <!-- Guide floating panel -->
+    <div class="guide-panel" id="guidePanel">
+        <div class="guide-resize guide-resize-n" data-dir="n"></div>
+        <div class="guide-resize guide-resize-s" data-dir="s"></div>
+        <div class="guide-resize guide-resize-w" data-dir="w"></div>
+        <div class="guide-resize guide-resize-e" data-dir="e"></div>
+        <div class="guide-resize guide-resize-nw" data-dir="nw"></div>
+        <div class="guide-resize guide-resize-ne" data-dir="ne"></div>
+        <div class="guide-resize guide-resize-sw" data-dir="sw"></div>
+        <div class="guide-resize guide-resize-se" data-dir="se"></div>
+        <div class="guide-header" id="guideHeader">
+            <h2 id="guidePanelTitle">Guide</h2>
+            <div class="guide-header-actions">
+                <button class="guide-btn" onclick="minimizeGuide()" title="Minimize">&#8722;</button>
+                <button class="guide-btn" onclick="closeGuide()" title="Close">&times;</button>
+            </div>
+        </div>
+        <div class="guide-body" id="guideBody" style="overflow:hidden auto;">Loading...</div>
+    </div>
+    <script>
+    const docCache = {};
+    const guidePanel = document.getElementById('guidePanel');
+    const guideHeader = document.getElementById('guideHeader');
+    let guideMinimized = false;
+    let guideSavedHeight = null;
+
+    async function showGuide() {
+        const lang = document.getElementById('guideLang').value;
+        const title = lang === 'fr' ? 'Guide de deploiement' : 'Deployment Guide';
+        const key = 'guide-' + lang;
+        const url = '/api/guide?lang=' + lang;
+        document.getElementById('guidePanelTitle').textContent = title;
+        guidePanel.classList.add('active');
+        if (guideMinimized) restoreGuide();
+        const body = document.getElementById('guideBody');
+        if (docCache[key]) {
+            body.innerHTML = docCache[key];
+            return;
+        }
+        body.innerHTML = lang === 'fr' ? 'Chargement...' : 'Loading...';
+        try {
+            const resp = await fetch(url);
+            if (!resp.ok) throw new Error('Failed to load');
+            const md = await resp.text();
+            docCache[key] = renderMarkdown(md);
+            body.innerHTML = docCache[key];
+        } catch(e) {
+            body.innerHTML = lang === 'fr' ? '<p>Impossible de charger le document.</p>' : '<p>Failed to load document.</p>';
+        }
+    }
+
+    document.getElementById('guideLang').addEventListener('change', () => {
+        if (guidePanel.classList.contains('active')) showGuide();
+    });
+
+    function closeGuide() {
+        guidePanel.classList.remove('active');
+        guideMinimized = false;
+    }
+
+    function minimizeGuide() {
+        const body = document.getElementById('guideBody');
+        const resizers = guidePanel.querySelectorAll('.guide-resize');
+        if (!guideMinimized) {
+            guideSavedHeight = guidePanel.offsetHeight + 'px';
+            body.style.display = 'none';
+            resizers.forEach(r => r.style.display = 'none');
+            guidePanel.style.height = 'auto';
+            guideMinimized = true;
+        } else {
+            restoreGuide();
+        }
+    }
+
+    function restoreGuide() {
+        const body = document.getElementById('guideBody');
+        const resizers = guidePanel.querySelectorAll('.guide-resize');
+        body.style.display = '';
+        resizers.forEach(r => r.style.display = '');
+        guidePanel.style.height = guideSavedHeight || '70vh';
+        guideMinimized = false;
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeGuide();
+    });
+
+    // Drag + resize logic
+    (function() {
+        let mode = null; // 'drag' or resize direction
+        let startX, startY, startLeft, startTop, startW, startH;
+        const MIN_W = 320, MIN_H = 200;
+
+        function ensureAbsolutePos() {
+            if (guidePanel.style.left) return;
+            const rect = guidePanel.getBoundingClientRect();
+            guidePanel.style.right = 'auto';
+            guidePanel.style.left = rect.left + 'px';
+            guidePanel.style.top = rect.top + 'px';
+        }
+
+        guideHeader.addEventListener('mousedown', e => {
+            if (e.target.closest('.guide-btn')) return;
+            ensureAbsolutePos();
+            mode = 'drag';
+            const rect = guidePanel.getBoundingClientRect();
+            startX = e.clientX; startY = e.clientY;
+            startLeft = rect.left; startTop = rect.top;
+            e.preventDefault();
+        });
+
+        guidePanel.querySelectorAll('.guide-resize').forEach(handle => {
+            handle.addEventListener('mousedown', e => {
+                ensureAbsolutePos();
+                mode = handle.dataset.dir;
+                const rect = guidePanel.getBoundingClientRect();
+                startX = e.clientX; startY = e.clientY;
+                startLeft = rect.left; startTop = rect.top;
+                startW = rect.width; startH = rect.height;
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (!mode) return;
+            const dx = e.clientX - startX;
+            const dy = e.clientY - startY;
+
+            if (mode === 'drag') {
+                guidePanel.style.left = Math.max(0, startLeft + dx) + 'px';
+                guidePanel.style.top = Math.max(0, startTop + dy) + 'px';
+                return;
+            }
+
+            let newW = startW, newH = startH, newL = startLeft, newT = startTop;
+
+            if (mode.includes('e')) newW = Math.max(MIN_W, startW + dx);
+            if (mode.includes('w')) { newW = Math.max(MIN_W, startW - dx); newL = startLeft + startW - newW; }
+            if (mode.includes('s')) newH = Math.max(MIN_H, startH + dy);
+            if (mode.includes('n')) { newH = Math.max(MIN_H, startH - dy); newT = startTop + startH - newH; }
+
+            guidePanel.style.width = newW + 'px';
+            guidePanel.style.height = newH + 'px';
+            guidePanel.style.left = Math.max(0, newL) + 'px';
+            guidePanel.style.top = Math.max(0, newT) + 'px';
+        });
+
+        document.addEventListener('mouseup', () => { mode = null; });
+    })();
+
+    function renderMarkdown(md) {
+        // Lightweight markdown to HTML renderer
+        let html = '';
+        const lines = md.split('\n');
+        let inCode = false, codeLang = '', codeBlock = '';
+        let inTable = false, tableRows = [];
+        let inList = false, listType = '', listItems = '';
+
+        function flushList() {
+            if (inList) {
+                const tag = listType === 'ol' ? 'ol' : 'ul';
+                html += `<${tag}>${listItems}</${tag}>`;
+                inList = false;
+                listItems = '';
+            }
+        }
+
+        function flushTable() {
+            if (inTable && tableRows.length > 0) {
+                let t = '<table><thead><tr>';
+                const headers = tableRows[0];
+                headers.forEach(h => t += `<th>${inlineFormat(h.trim())}</th>`);
+                t += '</tr></thead><tbody>';
+                for (let i = 2; i < tableRows.length; i++) {
+                    t += '<tr>';
+                    tableRows[i].forEach(c => t += `<td>${inlineFormat(c.trim())}</td>`);
+                    t += '</tr>';
+                }
+                t += '</tbody></table>';
+                html += t;
+                inTable = false;
+                tableRows = [];
+            }
+        }
+
+        function inlineFormat(s) {
+            s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+            s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, text, href) =>
+                href.startsWith('#') ? `<a href="${href}" onclick="event.stopPropagation();document.getElementById('${href.slice(1)}')?.scrollIntoView({behavior:'smooth'})">${text}</a>` : `<a href="${href}" target="_blank">${text}</a>`
+            );
+            return s;
+        }
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+
+            if (line.startsWith('```')) {
+                if (inCode) {
+                    html += `<pre><code>${codeBlock.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre>`;
+                    inCode = false;
+                    codeBlock = '';
+                } else {
+                    flushList();
+                    flushTable();
+                    inCode = true;
+                    codeLang = line.slice(3).trim();
+                    codeBlock = '';
+                }
+                continue;
+            }
+            if (inCode) {
+                codeBlock += (codeBlock ? '\n' : '') + line;
+                continue;
+            }
+
+            // Table
+            if (line.match(/^\|(.+)\|$/)) {
+                flushList();
+                if (!inTable) inTable = true;
+                if (line.match(/^\|[\s:-]+\|$/)) {
+                    tableRows.push(null); // separator
+                } else {
+                    const cells = line.slice(1, -1).split('|');
+                    tableRows.push(cells);
+                }
+                continue;
+            } else {
+                flushTable();
+            }
+
+            // List
+            const ulMatch = line.match(/^(\s*)[-*]\s+(.+)/);
+            const olMatch = line.match(/^(\s*)\d+\.\s+(.+)/);
+            if (ulMatch) {
+                if (!inList || listType !== 'ul') { flushList(); inList = true; listType = 'ul'; }
+                listItems += `<li>${inlineFormat(ulMatch[2])}</li>`;
+                continue;
+            }
+            if (olMatch) {
+                if (!inList || listType !== 'ol') { flushList(); inList = true; listType = 'ol'; }
+                listItems += `<li>${inlineFormat(olMatch[2])}</li>`;
+                continue;
+            }
+            flushList();
+
+            // Headings
+            const hMatch = line.match(/^(#{1,6})\s+(.+)/);
+            if (hMatch) {
+                const level = hMatch[1].length;
+                const text = hMatch[2];
+                const slug = text.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+                html += `<h${level} id="${slug}">${inlineFormat(text)}</h${level}>`;
+                continue;
+            }
+
+            // Empty line
+            if (line.trim() === '') continue;
+
+            // Paragraph
+            html += `<p>${inlineFormat(line)}</p>`;
+        }
+        flushList();
+        flushTable();
+        return html;
+    }
+    </script>
+</body>
+</html>
