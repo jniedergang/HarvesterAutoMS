@@ -86,7 +86,39 @@ Harvester UI > Images > Create > Upload File
 
 The ISO is available from the [Microsoft Evaluation Center](https://www.microsoft.com/en-us/evalcenter/evaluate-windows-server-2025) or VLSC.
 
-### 4. Serve the autounattend ISO and deploy
+### 4. Install Terraform and the Harvester provider
+
+```bash
+# Install Terraform (>= 1.5)
+# Option A: package manager
+sudo zypper install terraform          # openSUSE
+# Option B: official binary
+curl -fsSL https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip -o /tmp/tf.zip
+unzip /tmp/tf.zip -d ~/.local/bin/
+
+# Verify
+terraform version
+
+# Install the Harvester Terraform provider (0.0.0-dev)
+# The custom provider is required for the container_image_name attribute.
+# Clone and build from source:
+git clone https://github.com/harvester/terraform-provider-harvester.git /tmp/tf-harvester
+cd /tmp/tf-harvester
+go build -o terraform-provider-harvester
+mkdir -p ~/.terraform.d/plugins/registry.terraform.io/harvester/harvester/0.0.0-dev/linux_amd64/
+cp terraform-provider-harvester ~/.terraform.d/plugins/registry.terraform.io/harvester/harvester/0.0.0-dev/linux_amd64/
+```
+
+Copy the Harvester kubeconfig (`rke2.yaml`) into the Terraform directory.
+Retrieve it from the Harvester node:
+
+```bash
+ssh rancher@<harvester-ip> "sudo cat /etc/rancher/rke2/rke2.yaml" > rke2.yaml
+# Replace 127.0.0.1 with the Harvester IP/VIP
+sed -i 's/127.0.0.1/<harvester-vip>/g' rke2.yaml
+```
+
+### 5. Serve the autounattend ISO and deploy
 
 ```bash
 # Serve the ISO locally — Harvester downloads it via HTTP
@@ -104,7 +136,7 @@ terraform apply \
 
 Deployment takes approximately **15–20 minutes**. Monitor progress via the VNC console in Harvester UI.
 
-### 5. Connect
+### 6. Connect
 
 ```bash
 ssh Administrator@<vm-ip>
