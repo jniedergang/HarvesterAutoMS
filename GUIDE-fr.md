@@ -42,30 +42,75 @@ Fonctionne en environnement **connecte** et **air-gap** (hors ligne).
 
 ## Demarrage rapide
 
-Pour les utilisateurs presses — 5 commandes pour deployer une VM Windows :
+### 1. Construire et lancer le generateur
 
 ```bash
-# 1. Demarrer le generateur (si pas deja lance)
-podman start autounattend-generator    # ou: ./start.sh
+# Cloner le projet
+git clone https://github.com/jniedergang/HarvesterAutoMS.git
+cd HarvesterAutoMS
 
-# 2. Ouvrir http://<ip-poste>:8098
-#    → Remplir hostname, IP, password, DNS
-#    → Cliquer "Build ISO"
+# Construire l'image conteneur (inclut Flask, mkisofs, drivers VMDP)
+podman build -t localhost/autounattend-generator:latest -f Containerfile .
 
-# 3. Servir l'ISO
-cd iso/ && python3 -m http.server 8199 &
+# Creer le conteneur avec les volumes de donnees
+podman create --name autounattend-generator -p 8098:8098 \
+  -v ./iso:/app/iso:z -v ./xml:/app/xml:z -v ./configs:/app/configs:z \
+  -v ./drivers:/app/drivers:z -v ./images:/app/images:z \
+  localhost/autounattend-generator:latest
 
-# 4. Deployer
+# Demarrer
+podman start autounattend-generator
+```
+
+Le generateur ecoute sur le port **8098** (configurable dans `app.py`).
+
+### 2. Generer l'ISO autounattend
+
+Ouvrir `http://<ip-poste>:8098` dans un navigateur.
+
+- Remplir les champs : **hostname**, **IP statique**, **mot de passe**, **passerelle**, **DNS**, **timezone**
+- Verifier que les drivers **vmdp** sont coches dans la section Drivers
+- Cliquer **Build ISO**
+- L'ISO est generee dans le repertoire `iso/` (~1.6 Mo)
+
+### 3. Uploader l'ISO Windows dans Harvester
+
+Si ce n'est pas deja fait, importer l'ISO d'installation Windows Server 2025 (~6.2 Go) :
+
+```
+Harvester UI > Images > Create > Upload File
+  Nom :     windows-server-2025
+  Source :  Upload (ou URL si accessible)
+  --> Noter l'ID image resultant (ex: default/image-xxxxx)
+```
+
+L'ISO est disponible sur le [Centre d'evaluation Microsoft](https://www.microsoft.com/en-us/evalcenter/evaluate-windows-server-2025) ou via VLSC.
+
+### 4. Servir l'ISO autounattend et deployer
+
+```bash
+# Servir l'ISO localement — Harvester la telecharge via HTTP
+cd iso/
+python3 -m http.server 8199 &
+
+# Deployer la VM avec Terraform
 cd <repertoire-terraform>/
+terraform init    # premiere fois uniquement
 terraform apply \
-  -var 'admin_password=MotDePasse' \
+  -var 'admin_password=VotreMotDePasse' \
+  -var 'windows_iso_image=default/image-xxxxx' \
   -var 'autounattend_iso_url=http://<ip-poste>:8199/<nom-iso>.iso'
+```
 
-# 5. Se connecter (~20 min apres)
+Le deploiement prend environ **15-20 minutes**. Suivre la progression via la console VNC dans Harvester UI.
+
+### 5. Se connecter
+
+```bash
 ssh Administrator@<ip-vm>
 ```
 
-Pour la premiere utilisation, voir [Prerequis](#prerequis) pour la configuration initiale.
+Pour plus de details, voir [Prerequis](#prerequis) et [Deploiement](#deploiement).
 
 ---
 

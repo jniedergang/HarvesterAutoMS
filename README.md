@@ -42,30 +42,75 @@ Works in both **online** and **air-gapped** environments.
 
 ## Quick Start
 
-For experienced users — 5 commands to deploy a Windows VM:
+### 1. Build and start the generator
 
 ```bash
-# 1. Start the generator (if not already running)
-podman start autounattend-generator    # or: ./start.sh
+# Clone the project
+git clone https://github.com/jniedergang/HarvesterAutoMS.git
+cd HarvesterAutoMS
 
-# 2. Open http://<workstation-ip>:8098
-#    → Fill in hostname, IP, password, DNS
-#    → Click "Build ISO"
+# Build the container image (includes Flask, mkisofs, VMDP drivers)
+podman build -t localhost/autounattend-generator:latest -f Containerfile .
 
-# 3. Serve the ISO
-cd iso/ && python3 -m http.server 8199 &
+# Create the container with data volumes
+podman create --name autounattend-generator -p 8098:8098 \
+  -v ./iso:/app/iso:z -v ./xml:/app/xml:z -v ./configs:/app/configs:z \
+  -v ./drivers:/app/drivers:z -v ./images:/app/images:z \
+  localhost/autounattend-generator:latest
 
-# 4. Deploy
+# Start
+podman start autounattend-generator
+```
+
+The generator listens on port **8098** (configurable in `app.py`).
+
+### 2. Generate the autounattend ISO
+
+Open `http://<workstation-ip>:8098` in a browser.
+
+- Fill in: **hostname**, **static IP**, **password**, **gateway**, **DNS**, **timezone**
+- Verify **vmdp** drivers are checked in the Drivers section
+- Click **Build ISO**
+- The ISO is generated in the `iso/` directory (~1.6 MB)
+
+### 3. Upload the Windows ISO to Harvester
+
+If not already done, import the Windows Server 2025 installation ISO (~6.2 GB):
+
+```
+Harvester UI > Images > Create > Upload File
+  Name:   windows-server-2025
+  Source: Upload (or URL if accessible)
+  --> Note the resulting image ID (e.g. default/image-xxxxx)
+```
+
+The ISO is available from the [Microsoft Evaluation Center](https://www.microsoft.com/en-us/evalcenter/evaluate-windows-server-2025) or VLSC.
+
+### 4. Serve the autounattend ISO and deploy
+
+```bash
+# Serve the ISO locally — Harvester downloads it via HTTP
+cd iso/
+python3 -m http.server 8199 &
+
+# Deploy the VM with Terraform
 cd <terraform-dir>/
+terraform init    # first time only
 terraform apply \
-  -var 'admin_password=YourPassword' \
+  -var 'admin_password=YourSecurePassword' \
+  -var 'windows_iso_image=default/image-xxxxx' \
   -var 'autounattend_iso_url=http://<workstation-ip>:8199/<iso-filename>.iso'
+```
 
-# 5. Connect (~20 min later)
+Deployment takes approximately **15–20 minutes**. Monitor progress via the VNC console in Harvester UI.
+
+### 5. Connect
+
+```bash
 ssh Administrator@<vm-ip>
 ```
 
-For first-time setup, see [Prerequisites](#prerequisites).
+For more details, see [Prerequisites](#prerequisites) and [Deployment](#deployment).
 
 ---
 
